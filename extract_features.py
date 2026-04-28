@@ -6,33 +6,34 @@ import pandas as pd
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=True)
 
-data = []
+def process_dataset(base_folder, output_csv):
+    data = []
 
-dataset = "dataset"
+    for label in os.listdir(base_folder):
+        folder = os.path.join(base_folder, label)
 
-for label in os.listdir(dataset):
-    folder = os.path.join(dataset, label)
+        for file in os.listdir(folder):
+            path = os.path.join(folder, file)
 
-    for file in os.listdir(folder):
-        path = os.path.join(folder, file)
+            img = cv2.imread(path)
+            if img is None:
+                continue
 
-        img = cv2.imread(path)
-        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            result = hands.process(rgb)
 
-        result = hands.process(rgb)
+            if result.multi_hand_landmarks:
+                hand = result.multi_hand_landmarks[0]
 
-        if result.multi_hand_landmarks:
-            hand = result.multi_hand_landmarks[0]
+                row = []
+                for lm in hand.landmark:
+                    row.extend([lm.x, lm.y, lm.z])
 
-            row = []
+                row.append(label)
+                data.append(row)
 
-            for lm in hand.landmark:
-                row.extend([lm.x, lm.y, lm.z])
+    pd.DataFrame(data).to_csv(output_csv, index=False)
+    print(f"{output_csv} created.")
 
-            row.append(label)
-            data.append(row)
-
-df = pd.DataFrame(data)
-df.to_csv("features.csv", index=False)
-
-print("Features Extracted")
+process_dataset("dataset/ISL", "features_isl.csv")
+process_dataset("dataset/ASL", "features_asl.csv")
